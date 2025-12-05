@@ -1,0 +1,332 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>{{ restaurant.name }} Dashboard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow-x: hidden;
+      background: #fff;
+    }
+
+    :root {
+      --bg: #f9fafb;
+      --card: #ffffff;
+      --muted: #6b7280;
+      --accent: #ff4d4d;
+      --accent-2: #ffe1d6;
+      --glass: rgba(0, 0, 0, 0.02);
+      --glass-border: rgba(0, 0, 0, 0.06);
+      --success: #16a34a;
+      --danger: #dc2626;
+      --max-width: 1100px;
+      font-family: 'Inter', system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+      color-scheme: light;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; }
+
+    body {
+      background: var(--bg);
+      color: #111;
+      -webkit-font-smoothing: antialiased;
+      display: flex;
+      justify-content: center;
+    }
+
+    /* Splash Screen */
+    #splash-screen {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      background: linear-gradient(135deg, var(--accent), #ff9a7a);
+      z-index: 99999;
+      transition: opacity 0.5s ease, visibility 0.5s ease;
+      visibility: visible;
+      opacity: 1;
+    }
+
+    #splash-screen.fade-out {
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+    }
+
+    #splash-screen .splash-box {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      gap: 12px;
+      padding: 18px;
+      border-radius: 16px;
+      background: rgba(255, 255, 255, 0.04);
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.18);
+    }
+
+    #splash-screen img {
+      width: 170px;
+      border-radius: 12px;
+      animation: splash-pop 900ms cubic-bezier(.2, .9, .3, 1);
+    }
+
+    @keyframes splash-pop {
+      0% { transform: scale(.86); opacity: 0 }
+      60% { transform: scale(1.06); opacity: 1 }
+      100% { transform: scale(1); opacity: 1 }
+    }
+
+    #splash-screen small {
+      color: rgba(255, 255, 255, 0.9);
+      font-size: 14px;
+    }
+
+    /* App container */
+    .app {
+      width: 100%;
+      max-width: var(--max-width);
+      padding: 20px;
+    }
+
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 0;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .logo {
+      width: 48px;
+      height: 48px;
+      border-radius: 10px;
+      background: linear-gradient(135deg, var(--accent), #ff9a7a);
+      display: grid;
+      place-items: center;
+      color: #fff;
+      font-weight: bold;
+      font-size: 18px;
+    }
+
+    header h1 {
+      font-size: 20px;
+      margin: 0;
+    }
+
+    /* Toolbar */
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin: 16px 0;
+    }
+
+    input[type="date"], button {
+      padding: 8px 10px;
+      border-radius: 8px;
+      border: 1px solid var(--glass-border);
+      background: #fff;
+      font-size: 14px;
+    }
+
+    button {
+      background: linear-gradient(90deg, var(--accent), #ff7a59);
+      border: none;
+      color: #fff;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    button:hover { opacity: .9; }
+
+    /* Cards */
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 16px;
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--glass-border);
+      border-radius: 14px;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
+      padding: 16px;
+      transition: transform .14s ease;
+    }
+
+    .card:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
+    }
+
+    .card h3 {
+      font-size: 16px;
+      color: #111;
+      border-bottom: 1px solid #eee;
+      padding-bottom: 6px;
+      margin-bottom: 10px;
+    }
+
+    .metric {
+      display: flex;
+      justify-content: space-between;
+      font-size: 14px;
+      padding: 6px 0;
+      color: #333;
+    }
+
+    canvas {
+      width: 100%;
+      height: 300px;
+    }
+  </style>
+</head>
+
+<body>
+  <!-- Splash -->
+  <div id="splash-screen">
+    <div class="splash-box">
+      <img src="" alt="Logo">
+      <small>Loading {{ restaurant.name }} Dashboard...</small>
+    </div>
+  </div>
+
+  <!-- App -->
+  <div class="app">
+    <header>
+      <div class="brand">
+        <div class="logo">🍽️</div>
+        <div>
+          <h1>{{ restaurant.name }} Dashboard</h1>
+          <p class="lead">Analytics & Performance Overview</p>
+        </div>
+      </div>
+    </header>
+
+    <div class="toolbar">
+      <label>Date: <input id="date-input" type="date"></label>
+      <label>Range: <input id="start-date" type="date"> — <input id="end-date" type="date"></label>
+      <button id="load-btn">Load</button>
+      <button id="today-btn">Today</button>
+    </div>
+
+    <div class="grid">
+      <div class="card">
+        <h3>Summary</h3>
+        <div class="metric"><span>Total Orders</span><strong id="total-orders">-</strong></div>
+        <div class="metric"><span>Total Revenue</span><strong id="total-revenue">-</strong></div>
+        <div class="metric"><span>Top Item</span><strong id="top-item">-</strong></div>
+        <div class="metric"><span>Most Used Table</span><strong id="top-table">-</strong></div>
+      </div>
+
+      <div class="card">
+        <h3>Billing Info</h3>
+        <div class="metric"><span>Total Tax</span><strong id="total-tax">-</strong></div>
+        <div class="metric"><span>Total Discounts</span><strong id="total-discount">-</strong></div>
+        <div class="metric"><span>Cancelled Value</span><strong id="cancelled-value">-</strong></div>
+        <div class="metric"><span>Refunds</span><strong id="refunds">-</strong></div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:20px;">
+      <h3>Items Sold</h3>
+      <canvas id="itemChart"></canvas>
+    </div>
+  </div>
+
+  <script>
+    // Splash auto-hide
+    window.addEventListener("DOMContentLoaded", () => {
+      setTimeout(() => document.getElementById('splash-screen').classList.add('fade-out'), 1500);
+    });
+
+    function money(n) {
+      return (typeof n === 'number' ? n : parseFloat(n || 0))
+        .toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    const ctx = document.getElementById('itemChart').getContext('2d');
+    let itemChart = null;
+
+    async function loadData(params = {}) {
+      const qs = new URLSearchParams(params).toString();
+      const res = await fetch("/dashboard/data/?" + qs, { credentials: 'same-origin' });
+      if (!res.ok) return alert('Failed to load data: ' + res.statusText);
+      const data = await res.json();
+      renderData(data);
+    }
+
+    function renderData(data) {
+      const t = data.totals;
+      document.getElementById('total-orders').innerText = t.total_orders;
+      document.getElementById('total-revenue').innerText = "₹ " + money(t.total_revenue);
+      document.getElementById('total-tax').innerText = "₹ " + money(t.tax_sum);
+      document.getElementById('total-discount').innerText = "₹ " + money(t.discounts_sum);
+      document.getElementById('cancelled-value').innerText = "₹ " + money(t.cancelled_value);
+      document.getElementById('refunds').innerText = "₹ " + money(data.refunds_sum);
+
+      const topItem = (data.top_items && data.top_items.length > 0) ? data.top_items[0].name : '—';
+      const topTable = (data.table_summary && data.table_summary.length > 0) ? data.table_summary[0].table_number : '—';
+      document.getElementById('top-item').innerText = topItem;
+      document.getElementById('top-table').innerText = topTable;
+
+      const labels = data.top_items.map(i => i.name);
+      const counts = data.top_items.map(i => i.total_qty);
+      if (itemChart) itemChart.destroy();
+      itemChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: labels,
+          datasets: [{
+            label: 'Items Sold',
+            data: counts,
+            backgroundColor: '#ff4d4daa'
+          }]
+        },
+        options: {
+          scales: {
+            x: { ticks: { autoSkip: false, maxRotation: 60, minRotation: 30 } },
+            y: { beginAtZero: true }
+          }
+        }
+      });
+    }
+
+    document.getElementById('load-btn').addEventListener('click', () => {
+      const date = document.getElementById('date-input').value;
+      const sd = document.getElementById('start-date').value;
+      const ed = document.getElementById('end-date').value;
+      if (date) loadData({ date });
+      else if (sd && ed) loadData({ start_date: sd, end_date: ed });
+      else alert('Pick a date or range.');
+    });
+
+    document.getElementById('today-btn').addEventListener('click', () => {
+      const iso = new Date().toISOString().slice(0, 10);
+      document.getElementById('date-input').value = iso;
+      document.getElementById('start-date').value = '';
+      document.getElementById('end-date').value = '';
+      loadData({ date: iso });
+    });
+
+    document.getElementById('today-btn').click();
+  </script>
+</body>
+</html>

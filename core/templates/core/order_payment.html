@@ -1,0 +1,45 @@
+<h2 style="visibility:hidden; height:0; overflow:hidden;">Pay ₹{{ amount }}</h2>
+
+
+<script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+
+<form id="paymentForm" action="{% url 'payment_success' %}" method="POST">
+  {% csrf_token %}
+  <input type="hidden" name="razorpay_order_id" value="{{ razorpay_order_id }}">
+  <input type="hidden" name="restaurant_code" value="{{ restaurant.code }}">
+  <input type="hidden" name="table_number" value="{{ table_number }}">
+  <input type="hidden" name="cart_json" value='{{ cart_json|escapejs }}'>
+</form>
+
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  // Wait a tiny bit to make sure Razorpay script is ready
+  setTimeout(() => {
+    const options = {
+      key: "{{ razorpay_key_id }}",
+      amount: Math.round({{ amount|floatformat:0 }} * 100),
+      currency: "INR",
+      name: "{{ restaurant.name }}",
+      description: "Order Payment - Table {{ table_number }}",
+      order_id: "{{ razorpay_order_id }}",
+      handler: (response) => {
+        const form = document.getElementById('paymentForm');
+        form.insertAdjacentHTML('beforeend', `
+          <input type="hidden" name="razorpay_payment_id" value="${response.razorpay_payment_id}">
+          <input type="hidden" name="razorpay_signature" value="${response.razorpay_signature}">
+        `);
+        form.submit();
+      },
+      theme: { color: "#3399cc" }
+    };
+
+    const rzp = new Razorpay(options);
+    rzp.on('payment.failed', (response) => {
+      alert("Payment failed: " + response.error.description);
+    });
+
+    // Trigger automatically after small delay
+    rzp.open();
+  }, 800); // adjust delay if needed
+});
+</script>

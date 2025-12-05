@@ -1,0 +1,249 @@
+<body>
+  <div class="app">
+    <header class="header">
+      <div class="brand">
+        <div class="logo">QR</div>
+        <h1>Kitchen Orders</h1>
+      </div>
+    </header>
+
+    <main>
+      <section class="menu-wrap">
+        <div id="ordersContainer" class="grid">
+          {% for o in orders %}
+          <div class="card order-card">
+            <div class="order-top">
+              <div class="table-info">
+                <div class="table-icon">🍽️</div>
+                <div class="table-name">Table {{ o.table_number }}</div>
+              </div>
+              <div class="status-chip {{ o.status|lower }}">{{ o.status }}</div>
+            </div>
+
+            <div class="order-items">
+              {% for i in o.order_items.all %}
+                <div class="item-line">
+                  <span class="item-name">{{ i.name }}</span>
+                  <span class="item-qty">×{{ i.quantity }}</span>
+                </div>
+              {% endfor %}
+            </div>
+
+            <form method="post" class="status-form">{% csrf_token %}
+              <input type="hidden" name="order_id" value="{{ o.id }}">
+              <div class="status-row">
+                <select name="next_status" class="status-select">
+                  {% for val,label in o.STATUS_CHOICES %}
+                    <option value="{{ val }}" {% if o.status == val %}selected{% endif %}>{{ label }}</option>
+                  {% endfor %}
+                </select>
+                <button class="btn" type="submit">Update</button>
+              </div>
+            </form>
+
+            <div class="timestamp small">{{ o.created_at }}</div>
+          </div>
+          {% endfor %}
+        </div>
+
+        <div style="margin-top:48px; text-align:center;">
+          <a class="btn" href="{% url 'dashboard' %}">Back to Dashboard</a>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script>
+  async function fetchOrders() {
+    try {
+      const res = await fetch("{% url 'get_orders_json' %}");
+      if (!res.ok) return;
+      const data = await res.json();
+      const container = document.getElementById("ordersContainer");
+      let html = "";
+      data.orders.forEach(o => {
+        const items = o.items.map(i => `
+          <div class="item-line">
+            <span class="item-name">${i.name}</span>
+            <span class="item-qty">×${i.quantity}</span>
+          </div>`).join("");
+
+        const options = o.status_choices.map(sc =>
+          `<option value="${sc.value}" ${o.status === sc.value ? "selected" : ""}>${sc.label}</option>`
+        ).join("");
+
+        html += `
+          <div class="card order-card">
+            <div class="order-top">
+              <div class="table-info">
+                <div class="table-icon">🍽️</div>
+                <div class="table-name">Table ${o.table_number}</div>
+              </div>
+              <div class="status-chip ${o.status.toLowerCase()}">${o.status}</div>
+            </div>
+            <div class="order-items">${items}</div>
+            <form method="post" class="status-form">
+              <input type="hidden" name="csrfmiddlewaretoken" value="{{ csrf_token }}">
+              <input type="hidden" name="order_id" value="${o.id}">
+              <div class="status-row">
+                <select name="next_status" class="status-select">${options}</select>
+                <button class="btn" type="submit">Update</button>
+              </div>
+            </form>
+            <div class="timestamp small">${o.created_at}</div>
+          </div>`;
+      });
+      container.innerHTML = html;
+    } catch (err) {
+      console.error("Order fetch failed", err);
+    }
+  }
+
+  setInterval(fetchOrders, 5000);
+  </script>
+
+  <style>
+  body {
+    background: #fafafa;
+    font-family: 'Inter', sans-serif;
+    color: #222;
+  }
+
+  .header {
+    position: sticky;
+    top: 0;
+    background: #fff;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+    padding: 16px 20px;
+    z-index: 10;
+  }
+
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .logo {
+    background: #ff4d4d;
+    color: #fff;
+    font-weight: 700;
+    border-radius: 50%;
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .grid {
+    display: grid;
+    gap: 20px;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    padding: 24px 16px 100px;
+  }
+
+  .order-card {
+    background: #fff;
+    border-radius: 18px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+    padding: 18px 20px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+  }
+  .order-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 4px 18px rgba(0,0,0,0.1);
+  }
+
+  .order-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+  }
+
+  .table-info {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .table-icon {
+    font-size: 1.2rem;
+  }
+
+  .table-name {
+    font-weight: 600;
+    color: #111;
+  }
+
+  .status-chip {
+    padding: 4px 12px;
+    border-radius: 16px;
+    font-size: 0.8rem;
+    text-transform: capitalize;
+    font-weight: 600;
+  }
+
+  /* Color states for status */
+  .status-chip.pending { background: #fff2e0; color: #e68a00; }
+  .status-chip.inprogress { background: #e8f3ff; color: #0073e6; }
+  .status-chip.completed { background: #e7fbe8; color: #2f9e44; }
+  .status-chip.cancelled { background: #ffe6e6; color: #d32f2f; }
+
+  .order-items {
+    border-top: 1px solid #eee;
+    border-bottom: 1px solid #eee;
+    padding: 8px 0;
+    margin: 8px 0 10px;
+  }
+
+  .item-line {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.95rem;
+    padding: 4px 0;
+  }
+
+  .status-form {
+    margin-top: 6px;
+  }
+
+  .status-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .status-select {
+    flex: 1;
+    padding: 6px 8px;
+    border: 1px solid #ddd;
+    border-radius: 10px;
+    font-size: 0.9rem;
+    background: #fdfdfd;
+  }
+
+  .btn {
+    background: #ff4d4d;
+    border: none;
+    color: #fff;
+    border-radius: 10px;
+    padding: 7px 14px;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+  .btn:hover { background: #e03a3a; }
+
+  .timestamp {
+    font-size: 0.75rem;
+    color: #777;
+    margin-top: 6px;
+    text-align: right;
+  }
+  </style>
+</body>

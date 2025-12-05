@@ -1,0 +1,503 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>QrossLink — QR Based Solutions</title>
+
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+
+  <style>
+    /* ===== Root & Base ===== */
+    :root{
+      --bg: #ffffff;
+      --text: #0b1220;
+      --muted: #6b7280;
+      --accent: #00bfa6;
+      --accent-2: #00a88f;
+      --card-bg: #ffffff;
+      --glass: rgba(255,255,255,0.86);
+      --shadow: 0 10px 30px rgba(16,24,40,0.06);
+      --radius: 12px;
+      --maxwidth: 1180px;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0;
+      font-family:"Poppins",system-ui,-apple-system,Segoe UI,Roboto,"Helvetica Neue",Arial;
+      background:var(--bg);
+      color:var(--text);
+      -webkit-font-smoothing:antialiased;
+      -moz-osx-font-smoothing:grayscale;
+      line-height:1.45;
+      overflow-x:hidden;
+    }
+    a{color:inherit;text-decoration:none}
+    img{max-width:100%;display:block}
+
+    /* ===== Blurred QR Background =====
+       served from api.qrserver.com (static QR image, blurred)
+    ===== */
+    .bg-wrap{position:fixed;inset:0;z-index:-3;pointer-events:none;overflow:hidden}
+    .bg-qr{
+      position:absolute;inset:-12%;
+      background-image:url("https://api.qrserver.com/v1/create-qr-code/?data=QrossLink&size=1600x1600");
+      background-position:center;background-size:cover;
+      filter: blur(2px) saturate(120%) brightness(0.96);
+      opacity:0.14;transform:scale(1.06);
+      will-change:transform;
+    }
+    .bg-overlay{
+      position:absolute;inset:0;
+      background: linear-gradient(140deg, rgba(0,191,166,0.03), rgba(0,160,140,0.02) 45%, rgba(255,255,255,0.01));
+      mix-blend-mode: screen; animation: float 14s linear infinite;
+    }
+    @keyframes float {0%{transform:translateY(0)}50%{transform:translateY(-8px)}100%{transform:translateY(0)}}
+
+    /* ===== Utilities ===== */
+    .wrap{max-width:var(--maxwidth);margin:0 auto;padding:0 20px}
+    .sr-only{position:absolute;left:-9999px}
+
+    /* ===== NAV ===== */
+    nav.nav{position:sticky;top:0;z-index:60;backdrop-filter: blur(6px);background: rgba(255,255,255,0.78);border-bottom:1px solid rgba(16,24,40,0.04)}
+    .nav-inner{display:flex;align-items:center;justify-content:space-between;padding:12px 22px;max-width:var(--maxwidth);margin:0 auto}
+    .brand{display:flex;align-items:center;gap:12px;color:var(--text)}
+    .logo-mark{width:46px;height:46px;border-radius:10px;background:linear-gradient(135deg,var(--accent),var(--accent-2));display:grid;place-items:center;color:#042022;font-weight:800;font-size:18px;box-shadow:0 8px 22px rgba(0,191,166,0.12);transform:rotate(-6deg)}
+    .brand-title{font-weight:700;font-size:17px;letter-spacing:0.5px}
+
+    .nav-links{display:flex;gap:18px;align-items:center}
+    .nav-links a{font-weight:600;font-size:14px;color:var(--text);opacity:0.95}
+    .nav-links a:hover{color:var(--accent)}
+    .nav-cta{padding:10px 14px;background:linear-gradient(90deg,var(--accent),var(--accent-2));color:#042022;border-radius:10px;font-weight:700;box-shadow:0 8px 22px rgba(0,191,166,0.12)}
+
+    /* hamburger */
+    .hamburger{display:none;background:transparent;border:none;cursor:pointer;padding:8px}
+    .hamburger .bar{width:22px;height:2px;background:var(--text);display:block;margin:4px 0;border-radius:2px;transition:all .2s}
+
+    /* mobile menu panel */
+    .mobile-menu{display:none;position:fixed;inset:0;z-index:80;background:rgba(255,255,255,0.98);padding:20px;overflow:auto}
+    .mobile-brand{display:flex;align-items:center;gap:12px}
+    .mobile-links{display:flex;flex-direction:column;gap:18px;margin-top:20px}
+
+    /* ===== HERO ===== */
+    .hero{display:grid;grid-template-columns:1fr 440px;gap:36px;align-items:center;padding:46px 22px 12px}
+    .hero-left h1{font-size:42px;line-height:1.03;margin-bottom:12px}
+    .accent{color:var(--accent)}
+    .lead{color:var(--muted);font-size:16px;max-width:700px;margin-bottom:20px}
+    .hero-actions{display:flex;gap:12px;align-items:center}
+
+    .btn-primary{padding:12px 20px;background:linear-gradient(90deg,var(--accent),var(--accent-2));color:#042022;border-radius:12px;border:none;cursor:pointer;font-weight:700;box-shadow:0 12px 34px rgba(0,191,166,0.12)}
+    .btn-primary:active{transform:translateY(1px)}
+    .btn-ghost{padding:10px 16px;border-radius:10px;border:1px solid rgba(16,24,40,0.06);background:transparent;cursor:pointer;font-weight:700}
+
+    .hero-card{background:linear-gradient(180deg,#fff,#fbfbfb);border-radius:14px;padding:16px;box-shadow:var(--shadow);border:1px solid rgba(16,24,40,0.04)}
+    .hero-qr{display:grid;grid-template-columns:84px 1fr;gap:12px;align-items:center;margin-top:14px}
+    .qr-box{width:84px;height:84px;border-radius:10px;background:#fff;display:grid;place-items:center;overflow:hidden;box-shadow:0 8px 20px rgba(12,18,22,0.06)}
+    .hero-stats{display:flex;gap:12px;margin-top:14px;justify-content:space-between}
+    .stat b{font-size:18px;color:var(--text)}
+    .stat span{color:var(--muted);font-size:13px}
+
+    /* ===== Sections ===== */
+    .section{padding:34px 22px}
+    .section .wrap{padding:0}
+    .section h2{font-size:22px;margin-bottom:8px}
+    .section .muted{color:var(--muted);margin-bottom:16px}
+
+    /* features grid */
+    .features{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:18px;margin-top:12px}
+    .feature{background:linear-gradient(180deg,#fff,#fbfbfb);padding:18px;border-radius:12px;border:1px solid rgba(16,24,40,0.04);box-shadow:0 10px 20px rgba(12,18,22,0.04);transition:transform .18s}
+    .feature:hover{transform:translateY(-8px)}
+    .feature h3{color:var(--accent);margin-bottom:8px}
+    .feature p{color:var(--muted);font-size:14px}
+
+    /* pricing */
+    .pricing-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;margin-top:18px}
+    .price-card{background:linear-gradient(180deg,#fff,#fbfbfb);padding:18px;border-radius:12px;border:1px solid rgba(16,24,40,0.04);box-shadow:0 10px 30px rgba(12,18,22,0.04)}
+    .price{font-size:28px;font-weight:800;color:var(--accent);margin-bottom:8px}
+    .price-card ul{color:var(--muted);margin-top:8px;padding-left:18px}
+    .price-cta{display:inline-block;padding:10px 14px;background:var(--accent);color:#042022;border-radius:10px;text-decoration:none;font-weight:700}
+
+    /* testimonials */
+    .test-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px;margin-top:14px}
+    .testimonial{background:linear-gradient(180deg,#fff,#fbfbfb);padding:16px;border-radius:12px;border:1px solid rgba(16,24,40,0.04);box-shadow:0 8px 20px rgba(12,18,22,0.04)}
+    .testimonial p{color:var(--muted);font-style:italic}
+
+    /* contact */
+    .contact-wrap{display:flex;gap:18px;align-items:stretch;justify-content:center;margin-top:18px;flex-wrap:wrap}
+    .contact-card{width:520px;max-width:100%;background:linear-gradient(180deg,#fff,#fbfbfb);padding:18px;border-radius:12px;box-shadow:var(--shadow);border:1px solid rgba(16,24,40,0.04)}
+    .form-row{display:flex;gap:12px;margin-bottom:12px}
+    .form-row .field{flex:1}
+    input[type="text"], input[type="email"], textarea{width:100%;padding:12px 14px;border-radius:10px;border:1px solid rgba(16,24,40,0.06);outline:none;font-size:14px;color:var(--text)}
+    textarea{min-height:120px;resize:vertical}
+    .form-actions{display:flex;gap:12px;align-items:center;margin-top:8px}
+    .muted-note{color:var(--muted);font-size:13px}
+
+    /* footer */
+    footer{margin-top:36px;border-top:1px solid rgba(16,24,40,0.04);padding:28px 22px;color:var(--muted)}
+    .footer-inner{max-width:var(--maxwidth);margin:0 auto;display:flex;gap:20px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+    .socials a{margin-left:12px;text-decoration:none;color:var(--muted);font-weight:700}
+
+    /* reveal animations */
+    .reveal{opacity:0;transform:translateY(18px);transition:all .6s cubic-bezier(.2,.9,.2,1)}
+    .reveal.visible{opacity:1;transform:none}
+
+    /* ===== RESPONSIVE RULES (mobile-first improvements) ===== */
+    @media (max-width: 1024px){
+      .hero{grid-template-columns:1fr 360px}
+      .hero-left h1{font-size:36px}
+    }
+    @media (max-width: 880px){
+      .nav-links{display:none}
+      .hamburger{display:block}
+      .hero{grid-template-columns:1fr;gap:18px;padding:28px 18px 8px}
+      .hero-card{order:2}
+      .hero-left{order:1}
+      .hero-left h1{font-size:28px}
+      .lead{font-size:15px}
+      .features{grid-template-columns:repeat(1,1fr)}
+      .pricing-grid{grid-template-columns:repeat(1,1fr)}
+      .test-grid{grid-template-columns:repeat(1,1fr)}
+      .hero-qr{grid-template-columns:72px 1fr}
+      .qr-box{width:72px;height:72px}
+    }
+    @media (max-width:480px){
+      .brand-title{font-size:15px}
+      .logo-mark{width:40px;height:40px;font-size:15px}
+      .hero-left h1{font-size:22px}
+      .btn-primary{padding:10px 14px}
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Blurred QR Background -->
+  <div class="bg-wrap" aria-hidden="true">
+    <div class="bg-qr" role="img" aria-label="blurred QR background"></div>
+    <div class="bg-overlay"></div>
+  </div>
+
+  <!-- NAV -->
+  <nav class="nav" role="navigation" aria-label="Main navigation">
+    <div class="nav-inner wrap">
+      <a href="#home" class="brand" id="brandLink" onclick="scrollToId('home',event)">
+        <div class="logo-mark" aria-hidden="true">Qr</div>
+        <div class="brand-title">QrossL.ink</div>
+      </a>
+
+      <div class="nav-links" id="navlinks">
+        <a href="#home" onclick="scrollToId('home',event)">Home</a>
+        <a href="#features" onclick="scrollToId('features',event)">Features</a>
+        <a href="#pricing" onclick="scrollToId('pricing',event)">Pricing</a>
+        <a href="#testimonials" onclick="scrollToId('testimonials',event)">Testimonials</a>
+        <a href="#contact" onclick="scrollToId('contact',event)">Contact</a>
+      </div>
+
+      <div style="display:flex;align-items:center;gap:12px">
+        <a class="nav-cta" href="#contact" onclick="scrollToId('contact',event)">Get Demo</a>
+        <button class="hamburger" id="hambtn" aria-expanded="false" aria-controls="mobileMenu" aria-label="Open menu">
+          <span class="bar"></span><span class="bar"></span><span class="bar"></span>
+        </button>
+      </div>
+    </div>
+  </nav>
+
+  <!-- MOBILE MENU -->
+  <div id="mobileMenu" class="mobile-menu" style="display:none" role="dialog" aria-modal="true" aria-hidden="true">
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <div class="mobile-brand">
+        <div class="logo-mark" style="transform:none">Qr</div>
+        <div style="font-weight:700;font-size:18px">QrossLink</div>
+      </div>
+      <button id="mobileClose" aria-label="Close menu" style="background:none;border:none;font-size:18px;cursor:pointer">✕</button>
+    </div>
+
+    <nav class="mobile-links" style="margin-top:24px">
+      <a href="#home" onclick="navMobileGoto('home')">Home</a>
+      <a href="#features" onclick="navMobileGoto('features')">Features</a>
+      <a href="#pricing" onclick="navMobileGoto('pricing')">Pricing</a>
+      <a href="#testimonials" onclick="navMobileGoto('testimonials')">Testimonials</a>
+      <a href="#contact" onclick="navMobileGoto('contact')">Contact</a>
+    </nav>
+  </div>
+
+  <!-- HERO -->
+  <header id="home" class="hero wrap" role="banner">
+    <div class="hero-left">
+      <h1 class="reveal">Connect physical to digital with <span class="accent">instant QR</span> experiences</h1>
+      <p class="lead reveal">QrossLink builds enterprise-grade QR platforms — dynamic QR, analytics, secure integrations & custom webapps that turn physical interactions into measurable digital events.</p>
+      <div class="hero-actions reveal">
+        <button class="btn-primary" onclick="scrollToId('contact',event)">Request Demo</button>
+        <button class="btn-ghost" onclick="scrollToId('pricing',event)">View Pricing</button>
+      </div>
+    </div>
+
+    <aside class="hero-right">
+      <div class="hero-card reveal" aria-hidden="false">
+        <small>Live QR preview</small>
+        <div class="hero-qr">
+          <div class="qr-box" aria-hidden="true">
+            <img id="liveQR" src="https://api.qrserver.com/v1/create-qr-code/?data=https://qrosslink.example&size=200x200" alt="QR preview">
+          </div>
+          <div>
+            <div class="hero-cta-small" style="font-weight:700;color:var(--text)">QrossLink Quick Demo</div>
+            <div class="muted-note">Scan with your phone to try an example flow.</div>
+            <div class="hero-stats" style="margin-top:14px">
+              <div class="stat"><b>##+</b><span>Deployments</span></div>
+              <div class="stat"><b>99.9%</b><span>Uptime</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </aside>
+  </header>
+
+  <!-- FEATURES -->
+  <section id="features" class="section">
+    <div class="wrap">
+      <h2 class="reveal">Features</h2>
+      <p class="muted reveal">Everything your business needs to make offline interactions instantly digital and trackable.</p>
+
+      <div class="features reveal" id="featuresGrid">
+        <div class="feature">
+          <h3>Dynamic QR</h3>
+          <p>Change destination or action without reprinting codes — perfect for menus, campaigns, updates.</p>
+        </div>
+        <div class="feature">
+          <h3>Analytics</h3>
+          <p>Geolocation, device, time-series and conversion metrics to optimize customer journeys.</p>
+        </div>
+        <div class="feature">
+          <h3>Integrations</h3>
+          <p>APIs, webhooks and plugins to link QR events with POS, CRM or backend systems.</p>
+        </div>
+        <div class="feature">
+          <h3>Security</h3>
+          <p>Signed URLs, tokenized QR payloads, and tamper detection for safe interactions.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- PRICING -->
+  <section id="pricing" class="section">
+    <div class="wrap">
+      <h2 class="reveal">Pricing</h2>
+      <p class="muted reveal">Simple, predictable pricing that scales with your needs.</p>
+
+      <div class="pricing-grid reveal">
+        <div class="price-card">
+          <h3>Starter</h3>
+          <div class="price">₹899 <small>/mo</small></div>
+          <ul>
+            <li>20 dynamic scans / mo</li>
+            <li>Basic analytics</li>
+            <li>Email support</li>
+          </ul>
+          <a class="price-cta" href="#contact" onclick="scrollToId('contact',event)">Choose Starter</a>
+        </div>
+
+        <div class="price-card">
+          <h3>Pro</h3>
+          <div class="price">₹3,499 <small>/mo</small></div>
+          <ul>
+            <li>100 scans / mo</li>
+            <li>Advanced analytics & API</li>
+            <li>Priority support</li>
+          </ul>
+          <a class="price-cta" href="#contact" onclick="scrollToId('contact',event)">Choose Pro</a>
+        </div>
+
+        <div class="price-card">
+          <h3>Enterprise</h3>
+          <div class="price">Custom</div>
+          <ul>
+            <li>Unlimited scans</li>
+            <li>Custom SLAs & SSO</li>
+            <li>Dedicated onboarding</li>
+          </ul>
+          <a class="price-cta" href="#contact" onclick="scrollToId('contact',event)">Contact Sales</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- TESTIMONIALS -->
+  <section id="testimonials" class="section">
+    <div class="wrap">
+      <h2 class="reveal">What customers say</h2>
+      <p class="muted reveal">Real users. Measurable results.</p>
+
+      <div class="test-grid reveal">
+        <div class="testimonial">
+          <p>"QrossLink cut our table turnaround time by 32% and increased repeat ordering."</p>
+          <b>— Meera, Restaurant Owner</b>
+        </div>
+        <div class="testimonial">
+          <p>"We used QrossLink for event ticketing — analytics helped optimize crowd flow and vendor placement."</p>
+          <b>— Rajiv, Event Manager</b>
+        </div>
+        <div class="testimonial">
+          <p>"Integration with our POS and billing was seamless. The QrossLink team handled the heavy lifting."</p>
+          <b>— Sneha, Retail Chains</b>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CONTACT -->
+  <section id="contact" class="section">
+    <div class="wrap">
+      <h2 class="reveal">Contact / Request Demo</h2>
+      <p class="muted reveal">Tell us about your use case and we'll suggest the right plan.</p>
+
+      <div class="contact-wrap reveal">
+        <div class="contact-card">
+          <form id="contactForm" onsubmit="handleContact(event)" novalidate>
+            <div class="form-row">
+              <div class="field"><input id="name" type="text" placeholder="Full name" required></div>
+              <div class="field"><input id="email" type="email" placeholder="Email address" required></div>
+            </div>
+            <div class="form-row">
+              <div class="field"><input id="company" type="text" placeholder="Company (optional)"></div>
+              <div class="field"><input id="phone" type="text" placeholder="Phone (optional)"></div>
+            </div>
+            <div style="margin-bottom:12px">
+              <textarea id="message" placeholder="Tell us about your use case" required></textarea>
+            </div>
+
+            <div class="form-actions">
+              <div class="muted-note">We typically reply within 1 business day.</div>
+              <div style="margin-left:auto"><button type="submit" class="btn-primary">Send Request</button></div>
+            </div>
+          </form>
+        </div>
+
+        <div style="width:360px;max-width:100%;">
+          <div style="background:linear-gradient(180deg,#fff,#fbfbfb);padding:18px;border-radius:12px;box-shadow:var(--shadow);border:1px solid rgba(16,24,40,0.04)">
+            <h3 style="margin:0 0 8px 0;color:var(--text)">Live stats</h3>
+            <div style="display:flex;gap:12px;margin-top:8px;align-items:center;flex-wrap:wrap;">
+              <div style="min-width:110px;">
+                <div style="font-size:20px;font-weight:800;color:var(--accent)">+1,200</div>
+                <div style="color:var(--muted);font-size:13px">Deployments</div>
+              </div>
+              <div style="min-width:110px;">
+                <div style="font-size:20px;font-weight:800;color:var(--accent)">99.9%</div>
+                <div style="color:var(--muted);font-size:13px">Uptime</div>
+              </div>
+            </div>
+
+            <hr style="border:none;border-top:1px solid rgba(16,24,40,0.04);margin:14px 0">
+
+            <div style="display:flex;gap:10px;align-items:center">
+              <div class="qr-box" style="width:72px;height:72px;border-radius:8px;overflow:hidden">
+                <img src="https://api.qrserver.com/v1/create-qr-code/?data=https://qrosslink.example&size=200x200" alt="qr">
+              </div>
+              <div>
+                <div style="font-weight:700;color:var(--text)">Try a public demo</div>
+                <div style="color:var(--muted);font-size:13px">Scan the QR with your phone camera</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer>
+    <div class="footer-inner wrap">
+      <div>© <strong>QrossLink</strong> — Built for seamless QR experiences.</div>
+      <div class="socials">
+        <a href="#" aria-label="twitter">TW</a>
+        <a href="#" aria-label="linkedin">LI</a>
+        <a href="#" aria-label="github">GH</a>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    /* Smooth scroll helper */
+    function scrollToId(id, e){
+      if(e) e.preventDefault();
+      const el = document.getElementById(id);
+      if(!el) return window.scrollTo({top:0,behavior:'smooth'});
+      const navHeight = document.querySelector('.nav')?.offsetHeight || 70;
+      const top = window.pageYOffset + el.getBoundingClientRect().top - navHeight - 12;
+      window.scrollTo({top,behavior:'smooth'});
+      if(mobileMenuOpen) toggleMobile(false);
+    }
+
+    /* Mobile menu toggle and helpers */
+    const hambtn = document.getElementById('hambtn');
+    const mobileMenu = document.getElementById('mobileMenu');
+    const mobileClose = document.getElementById('mobileClose');
+    let mobileMenuOpen = false;
+
+    function toggleMobile(open){
+      mobileMenuOpen = !!open;
+      if(open){
+        mobileMenu.style.display = 'block';
+        mobileMenu.setAttribute('aria-hidden','false');
+        hambtn.setAttribute('aria-expanded','true');
+        document.body.style.overflow = 'hidden';
+      } else {
+        mobileMenu.style.display = 'none';
+        mobileMenu.setAttribute('aria-hidden','true');
+        hambtn.setAttribute('aria-expanded','false');
+        document.body.style.overflow = '';
+      }
+    }
+    if(hambtn) hambtn.addEventListener('click', ()=> toggleMobile(true));
+    if(mobileClose) mobileClose.addEventListener('click', ()=> toggleMobile(false));
+    function navMobileGoto(id){ toggleMobile(false); setTimeout(()=> scrollToId(id), 220); }
+
+    /* Reveal on scroll */
+    const reveals = document.querySelectorAll('.reveal');
+    const obs = new IntersectionObserver((entries)=>{ entries.forEach(entry=>{ if(entry.isIntersecting) entry.target.classList.add('visible'); }); }, {threshold:0.12});
+    reveals.forEach(r=>obs.observe(r));
+
+    /* Contact form client-side handling; replace with real endpoint if required */
+    function handleContact(e){
+      e.preventDefault();
+      const btn = e.target.querySelector('button');
+      const name = document.getElementById('name').value.trim();
+      const email = document.getElementById('email').value.trim();
+      const message = document.getElementById('message').value.trim();
+      if(!name || !email || !message){ alert('Please fill required fields (name, email, message).'); return; }
+
+      btn.disabled = true;
+      const original = btn.textContent;
+      btn.textContent = 'Sending...';
+
+      setTimeout(()=>{
+        btn.disabled = false;
+        btn.textContent = original;
+        e.target.reset();
+        alert('Thanks — your request is received. We will contact you within 1 business day.');
+      }, 900);
+
+      /* To integrate with backend:
+      fetch('https://your-backend/api/contact', {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({name,email,company:document.getElementById('company').value,phone:document.getElementById('phone').value,message})
+      }).then(r=>r.json()).then(res=>{
+         // handle response
+      }).catch(err=>{
+         // handle error
+      });
+      */
+    }
+
+    /* Accessibility: keyboard navigation for nav links */
+    document.querySelectorAll('.nav-links a').forEach(a=> a.addEventListener('keydown',(ev)=>{ if(ev.key==='Enter') a.click(); }));
+
+    /* Respect reduced motion */
+    if(window.matchMedia('(prefers-reduced-motion: reduce)').matches){
+      document.querySelectorAll('.bg-overlay').forEach(n=> n.style.animation='none');
+      document.querySelectorAll('.reveal').forEach(n=> n.style.transition='none');
+    }
+  </script>
+</body>
+</html>

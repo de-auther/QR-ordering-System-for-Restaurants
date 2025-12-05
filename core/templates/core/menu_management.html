@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Menu Management – {{ restaurant.name }}</title>
+  <style>
+:root{
+  --bg:#f9fafb;
+  --card:#ffffff;
+  --muted:#6b7280;
+  --accent:#ff7a59;
+  --accent-2:#ffbfa3;
+  --border:#e5e7eb;
+  --success:#16a34a;
+  --danger:#dc2626;
+  --max-width:1200px;
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{
+  margin:0;padding:0;background:var(--bg);
+  color:#111827;-webkit-font-smoothing:antialiased;
+  display:flex;align-items:flex-start;justify-content:center;
+  padding:20px 12px;min-height:100vh;
+}
+.app{
+  width:100%;max-width:var(--max-width);
+  background:var(--card);
+  border-radius:14px;padding:18px;
+  box-shadow:0 6px 20px rgba(0,0,0,0.06);
+  overflow:hidden;border:1px solid var(--border);
+}
+header{display:flex;align-items:center;gap:12px}
+.brand{display:flex;align-items:center;gap:10px}
+.logo{width:48px;height:48px;border-radius:10px;background:linear-gradient(135deg,var(--accent),#ffb38a);display:grid;place-items:center;color:#fff;font-weight:700;}
+h1{font-size:18px;margin:0}
+p.lead{margin:0;color:var(--muted);font-size:13px}
+
+main{display:flex;gap:18px;margin-top:16px}
+.menu-wrap{flex:1;min-width:280px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px}
+
+.card{
+  background:var(--card);
+  padding:12px;border-radius:12px;
+  border:1px solid var(--border);
+  display:flex;gap:10px;align-items:flex-start;
+  transition:transform .18s cubic-bezier(.2,.9,.2,1),box-shadow .18s;
+}
+.card:hover{transform:translateY(-4px);box-shadow:0 8px 16px rgba(0,0,0,0.06);}
+.thumb{
+  width:72px;height:72px;border-radius:10px;
+  background:linear-gradient(135deg,var(--accent),#ffb38a);
+  display:grid;place-items:center;
+  font-weight:700;color:#fff;font-size:18px;
+  overflow:hidden;
+}
+.thumb img{width:100%;height:100%;object-fit:cover;border-radius:10px;}
+.meta{flex:1}
+.meta h3{margin:0;font-size:15px}
+.meta p{margin:4px 0 0 0;color:var(--muted);font-size:13px}
+.price{font-weight:700;margin-top:6px}
+
+.btn{
+  background:linear-gradient(90deg,var(--accent),#ff9a7a);
+  padding:8px 10px;border-radius:8px;border:0;color:#fff;font-weight:700;cursor:pointer;
+  transition:opacity .18s;
+}
+.btn:hover{opacity:.9}
+
+.formbar{
+  display:flex;flex-wrap:wrap;gap:10px;align-items:center;
+  background:#f3f4f6;
+  border:1px solid var(--border);
+  border-radius:12px;
+  padding:10px 12px;
+  margin-bottom:16px;
+}
+.formbar input, .formbar select{
+  background:var(--card);
+  border:1px solid var(--border);
+  color:#111827;
+  border-radius:8px;
+  padding:8px;
+  font-size:14px;
+  outline:none;
+  min-width:140px;
+}
+.formbar input[type="file"]{
+  border:0;
+  background:none;
+  font-size:13px;
+}
+.formbar input:focus, .formbar select:focus{border-color:var(--accent);}
+.actions{margin-top:8px;display:flex;gap:8px;flex-wrap:wrap}
+.muted{color:var(--muted)}
+h3,h4{margin-top:16px}
+h4{color:var(--accent)}
+
+@media (max-width:700px){
+  .formbar{flex-direction:column;align-items:stretch}
+  .grid{grid-template-columns:repeat(auto-fill,minmax(160px,1fr))}
+}
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header>
+      <div class="brand">
+        <div class="logo">QR</div>
+        <div>
+          <h1>Menu Management</h1>
+          <p class="lead">{{ restaurant.name }}</p>
+        </div>
+      </div>
+    </header>
+    <main>
+      <section class="menu-wrap">
+
+        <form method="post" class="formbar" enctype="multipart/form-data">{% csrf_token %}
+          <h3 style="margin:0 8px 0 0;">Add Category</h3>
+          {{ category_form.name }}
+          <button class="btn" name="add_category">Add Category</button>
+        </form>
+
+        <form method="post" class="formbar" enctype="multipart/form-data">{% csrf_token %}
+          <h3 style="margin:0 8px 0 0;">Add Menu Item</h3>
+          {{ menuitem_form.category }}
+          {{ menuitem_form.name }}
+          {{ menuitem_form.price }}
+          {{ menuitem_form.image }}
+          <button class="btn" name="add_menuitem">Add Menu Item</button>
+        </form>
+
+        <h3>Existing Menu</h3>
+        {% for cat, items in per_cat_items %}
+          <h4>{{ cat.name }}</h4>
+          <div class="grid">
+            {% for item in items %}
+              <div class="card">
+                <div class="thumb">
+                  {% if item.image %}
+                    <img src="{{ item.image.url }}" alt="{{ item.name }}">
+                  {% else %}
+                    {{ item.thumb|default:item.name|slice:":2" }}
+                  {% endif %}
+                </div>
+                <div class="meta">
+                  <h3>{{ item.name }}</h3>
+                  <div class="price">₹{{ item.price }}</div>
+                  <div class="actions">
+                    <form method="post">{% csrf_token %}
+                      <input type="hidden" name="item_id" value="{{ item.id }}">
+                      <button class="btn" type="submit" name="toggle_active">
+                        {% if item.active %}Hide{% else %}Show{% endif %}
+                      </button>
+                      <button class="btn" type="submit" name="delete_item">Delete</button>
+                    </form>
+                  </div>
+                </div>
+              </div>
+            {% endfor %}
+          </div>
+        {% endfor %}
+
+        <div style="margin-top:24px;">
+          <a class="btn" href="{% url 'dashboard' %}">Back to Dashboard</a>
+        </div>
+
+      </section>
+    </main>
+  </div>
+</body>
+</html>

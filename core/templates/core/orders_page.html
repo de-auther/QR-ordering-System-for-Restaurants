@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Orders</h2>
+<div>Total: ₹{{total}}</div>
+<table>
+  <tr>
+    <th>Table</th><th>Items</th><th>Status</th><th>Amount</th><th>Date</th><th>Actions</th>
+  </tr>
+  {% for order in orders %}
+  <tr>
+    <td>{{order.table_id}}</td>
+    <td>
+      {% for oi in order.orderitem_set.all %}
+        {{oi.menu_item.name}} x{{oi.quantity}},
+      {% endfor %}
+    </td>
+    <td>{{order.status}}</td>
+    <td>₹{{order.total}}</td>
+    <td>{{order.created_at}}</td>
+    <td>
+      <form method="post" action="{% url 'update_order_status' order.id %}">{% csrf_token %}
+        <select name="status">
+          <option value="preparing">Preparing</option>
+          <option value="ready">Ready</option>
+          <option value="delivered">Delivered</option>
+        </select>
+        <button type="submit" class="btn">Update</button>
+      </form>
+    </td>
+  </tr>
+  {% endfor %}
+</table>
+{% endblock %}

@@ -1,0 +1,545 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>{{ restaurant.name }} Menu — Table QR</title>
+  <meta name="description" content="QR menu ordering — Zomato-style UI" />
+  <style>
+    html, body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  overflow-x: hidden;
+  background: #fff;
+}
+
+    /* ---------- Root / Reset ---------- */
+    :root{
+      --bg:#f9fafb;
+      --card:#ffffff;
+      --muted:#6b7280;
+      --accent:#ff4d4d;
+      --accent-2:#ffe1d6;
+      --glass: rgba(0,0,0,0.02);
+      --glass-border: rgba(0,0,0,0.06);
+      --success:#16a34a;
+      --danger:#dc2626;
+      --max-width:1100px;
+      font-family: 'Inter', system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+      color-scheme: light;
+    }
+    *,*::before,*::after { box-sizing: border-box; }
+    html,body{height:100%;margin:0;}
+    body{
+      background:var(--bg);
+      color:#111;
+      -webkit-font-smoothing:antialiased;
+      -moz-osx-font-smoothing:grayscale;
+      line-height:1.3;
+      display:flex;
+      justify-content:center;
+    }
+
+    /* ---------- Splash (NEW) ---------- */
+    /* Behavior: show immediately on DOMContentLoaded, hide after 2s regardless of other loads */
+    #splash-screen{
+      position:fixed;
+      inset:0;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      flex-direction:column;
+      background: linear-gradient(135deg, var(--accent), #ff9a7a);
+      z-index:99999;
+      transition: opacity 0.5s ease, visibility 0.5s ease;
+      visibility:visible;
+      opacity:1;
+    }
+    #splash-screen.fade-out{
+      opacity:0;
+      visibility:hidden;
+      pointer-events:none;
+    }
+    #splash-screen .splash-box{
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      flex-direction:column;
+      gap:12px;
+      padding:18px;
+      border-radius:16px;
+      background: rgba(255,255,255,0.04);
+      box-shadow: 0 20px 60px rgba(0,0,0,0.18);
+    }
+    #splash-screen img{
+      width:170px;
+      height:auto;
+      display:block;
+      border-radius:12px;
+      object-fit:contain;
+      transform-origin:center;
+      animation: splash-pop 900ms cubic-bezier(.2,.9,.3,1);
+    }
+    @keyframes splash-pop{
+      0%{transform:scale(.86); opacity:0}
+      60%{transform:scale(1.06); opacity:1}
+      100%{transform:scale(1); opacity:1}
+    }
+    #splash-screen small{ color: rgba(255,255,255,0.9); font-size:14px; }
+
+    /* ---------- App container ---------- */
+    .app{
+      width:100%;
+      max-width:var(--max-width);
+      padding:16px;
+      padding-bottom:140px; /* leave room for floating cart */
+    }
+
+    header{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+      padding:8px 0 4px;
+    }
+    .brand{display:flex;align-items:center;gap:12px;}
+    .logo{
+      width:46px;height:46px;border-radius:10px;
+      background:linear-gradient(135deg,var(--accent),#ff9a7a);
+      display:grid;place-items:center;font-weight:700;color:#fff;
+      box-shadow:0 2px 6px rgba(0,0,0,0.08);
+      flex:0 0 46px;
+    }
+    header h1{font-size:18px;margin:0;}
+    .lead{color:var(--muted);font-size:13px;margin-top:4px;}
+
+    /* ---------- Filters / Chips / Search ---------- */
+    .controls{
+      margin-top:8px;
+      display:flex;
+      flex-direction:column;
+      gap:10px;
+    }
+    .filters{
+      display:flex;
+      gap:10px;
+      overflow-x:auto;
+      padding-bottom:4px;
+      scrollbar-width:none;
+    }
+    .filters::-webkit-scrollbar{display:none;}
+    .chip{
+      background:#fff;border:1px solid var(--glass-border);border-radius:999px;padding:8px 14px;
+      font-size:13px;color:#555;cursor:pointer;white-space:nowrap;
+      transition: background .18s, transform .12s;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+    }
+    .chip:hover{transform:translateY(-1px)}
+    .chip.active{background:var(--accent);color:#fff;font-weight:600;box-shadow:0 6px 18px rgba(255,77,77,0.14);}
+
+    .search-bar{
+      position:relative;
+      width:100%;
+      max-width:100%;
+    }
+    .search-bar input{
+      width:100%;
+      padding:10px 40px 10px 12px;
+      border-radius:8px;
+      border:1px solid var(--glass-border);
+      font-size:14px;
+      background:#fff;
+    }
+    .search-bar svg{
+      position:absolute;
+      right:12px;top:50%;
+      transform:translateY(-50%);
+      width:18px;height:18px;color:var(--muted);
+    }
+
+    /* ---------- Menu grid and cards ---------- */
+    .grid{
+      margin-top:10px;
+      display:grid;
+      grid-template-columns:repeat(auto-fill,minmax(180px,1fr));
+      gap:16px;
+      padding-bottom: 120px;
+    }
+    .card{
+      background:var(--card);
+      border-radius:12px;
+      padding:14px;
+      border:1px solid var(--glass-border);
+      display:flex;flex-direction:column;gap:8px;position:relative;
+      transition: transform .14s ease, box-shadow .14s ease;
+      box-shadow:0 2px 6px rgba(0,0,0,0.04);
+    }
+    .card:hover{ transform: translateY(-4px); box-shadow: 0 14px 40px rgba(0,0,0,0.08); }
+    .thumb{ width:100%; aspect-ratio:1; border-radius:10px; overflow:hidden; background:#f3f3f3; position:relative; }
+    .thumb img{ width:100%; height:100%; object-fit:cover; display:block; }
+    .meta h3{ font-size:15px; margin:0; color:#111; }
+    .meta p{ color:var(--muted); font-size:13px; line-height:1.4; min-height:36px; }
+    .price{ font-weight:700; margin-top:4px; color:#111; }
+
+    .cart-indicator{
+      position:absolute; top:6px; right:6px;
+      background:var(--accent); color:#fff; font-weight:700;
+      border-radius:50%; width:26px; height:26px; display:grid; place-items:center;
+      font-size:13px; box-shadow:0 2px 6px rgba(0,0,0,0.2); visibility:hidden;
+    }
+    .cart-indicator.visible{ visibility:visible; }
+
+    .btn{
+      background:linear-gradient(90deg,var(--accent),#ff7a59);
+      border:none;color:#fff;font-weight:700;border-radius:8px;padding:8px 10px;cursor:pointer;
+      transition:opacity .18s;
+    }
+    .btn:hover{opacity:.92;}
+
+    /* ---------- Floating cart (bottom drawer) ---------- */
+    .floating-cart{
+      position:fixed;
+      left:0;right:0;bottom:0;
+      background:#fff;border-top:1px solid var(--glass-border);
+      box-shadow:0 -12px 40px rgba(0,0,0,0.12);
+      border-radius:16px 16px 0 0;
+      transform:translateY(calc(100% - 58px));
+      transition:transform .28s cubic-bezier(.22,.9,.27,1);
+      z-index:120;
+      max-height:92vh;
+      overflow:hidden;
+    }
+    .floating-cart.open{ transform: translateY(0); }
+    .cart-header{
+      display:flex;align-items:center;justify-content:space-between;padding:14px 18px;cursor:pointer;
+    }
+    .cart-header h2{ font-size:16px;margin:0;color:#111; }
+    .cart-body{ padding:10px 16px; overflow:auto; max-height:46vh; }
+    .cart-item{ display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px solid rgba(0,0,0,0.06); }
+    .cart-item span{ font-size:14px; color:#222; }
+    .cart-item button{ background:none; color:#222; border:1px solid rgba(0,0,0,0.18); border-radius:4px; padding:3px 7px; cursor:pointer; }
+
+    .cart-footer{ padding:14px 16px; background:#f7f7f8; border-top:1px solid rgba(0,0,0,0.06); }
+    .total-line{ display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; font-weight:700; font-size:16px; color:#111; }
+    .checkout-btn{ width:100%; padding:10px; border:none; border-radius:8px; background:linear-gradient(90deg,var(--accent),#ff7a59); color:#fff; font-weight:700; cursor:pointer; font-size:15px; }
+    .checkout-btn:hover{ opacity:.92; }
+
+    .cart-toggle-arrow{ transform:rotate(0deg); transition:transform .18s; }
+    .floating-cart.open .cart-toggle-arrow{ transform:rotate(180deg); }
+
+    /* ---------- Upsell ---------- */
+    .upsell{ margin-top:16px; padding-top:8px; border-top:1px dashed rgba(0,0,0,0.04); }
+    .upsell h3{ font-size:15px; margin-bottom:8px; color:var(--muted); }
+    .upsell-list{ display:flex; overflow-x:auto; gap:10px; padding-bottom:6px; }
+    .upsell-item{ min-width:140px; background:var(--card); border-radius:10px; padding:8px; display:flex; flex-direction:column; gap:6px; border:1px solid var(--glass-border); box-shadow:0 2px 6px rgba(0,0,0,0.04); }
+    .upsell-item img{ width:100%; height:90px; object-fit:cover; border-radius:8px; }
+    .upsell-item button{ background:rgba(0,0,0,0.05); color:#111; border:none; border-radius:6px; padding:5px; cursor:pointer; font-size:13px; }
+    .upsell-item button:hover{ background:rgba(0,0,0,0.09); }
+
+    /* ---------- Responsive tweaks ---------- */
+    @media(min-width:900px){
+      .app{ display:flex; gap:20px; align-items:flex-start; }
+      main{ flex:1; }
+      .floating-cart{ position:sticky; transform:none; width:360px; margin-left:auto; border-radius:20px; max-height:none; right: auto; left: auto; bottom:auto; }
+    }
+  </style>
+</head>
+<body>
+  <!-- SPLASH: static URL image, will hide after exactly 2s (no waiting for heavy assets) -->
+  <div id="splash-screen" aria-hidden="false">
+    <div class="splash-box" role="img" aria-label="Loading">
+      <!-- STATIC IMAGE PATH as requested -->
+      <img src="https://mandimanzil.com/wp-content/uploads/2025/04/MANDIMANZIL-2-1024x1024.png" alt="Loading...">
+      <small>Preparing your menu…</small>
+    </div>
+  </div>
+
+  <!-- APP CONTENT (unchanged business logic; search, filters, cart, upsell, checkout) -->
+  <div class="app" id="appRoot" aria-hidden="false">
+    <main>
+      <header>
+        <div class="brand">
+          <!-- <div class="logo">QR</div> -->
+          <img class="logo" src="https://mandimanzil.com/wp-content/uploads/2025/04/MANDIMANZIL-2-1024x1024.png" alt="">
+          <div>
+            <h1>{{ restaurant.name }} — QuickOrder</h1>
+            <p class="lead">Scan • Order • Pay</p>
+          </div>
+        </div>
+        <div style="font-size:13px;color:var(--muted)">Table <strong>{{ table_number }}</strong></div>
+      </header>
+
+      <section class="controls">
+        <div class="filters" id="chipContainer">
+          <button class="chip active" onclick="filterCategory('All', this)">All</button>
+          {% for cat, items in cat_items %}
+            <button class="chip" onclick="filterCategory('{{ cat.name }}', this)">{{ cat.name }}</button>
+          {% endfor %}
+        </div>
+
+        <div class="search-bar" aria-label="Search">
+          <input type="text" id="searchInput" placeholder="Search dishes..." aria-label="Search items">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+          </svg>
+        </div>
+      </section>
+
+      <div class="grid" id="menuGrid" aria-live="polite">
+        {% for cat, items in cat_items %}
+          {% for wrapped in items %}
+            {% with item=wrapped.item %}
+              <article class="card" data-category="{{ cat.name }}" data-name="{{ item.name|lower }}" data-id="{{ item.id }}">
+                <div class="thumb" aria-hidden="false">
+                  {% if item.image %}
+                    <img src="{{ item.image.url }}" alt="{{ item.name }}" loading="lazy">
+                  {% else %}
+                    <img src="https://via.placeholder.com/300x300.png?text={{ item.name|urlencode }}" alt="{{ item.name }}">
+                  {% endif %}
+                  <div class="cart-indicator" id="cart-icon-{{ item.id }}">0</div>
+                </div>
+
+                <div class="meta">
+                  <h3>{{ item.name }}</h3>
+                  <p>{{ item.desc }}</p>
+                  <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px;">
+                    <div class="price">₹{{ item.price }}</div>
+                    <button class="btn" onclick="addToCart('{{ item.id }}','{{ item.name }}','{{ item.price }}')">Add</button>
+                  </div>
+                </div>
+              </article>
+            {% endwith %}
+          {% endfor %}
+        {% endfor %}
+      </div>
+    </main>
+
+    <!-- Floating cart / drawer -->
+    <aside class="floating-cart" id="cartDrawer" aria-hidden="false" role="region" aria-label="Cart">
+      <div class="cart-header" onclick="toggleCart()" role="button" aria-pressed="false">
+        <h2>Your Order (<span id="itemCount">0</span>)</h2>
+        <svg class="cart-toggle-arrow" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+      </div>
+
+      <div class="cart-body" id="cartList">
+        <div style="text-align:center;color:var(--muted);padding:20px 0;">Cart is empty</div>
+      </div>
+
+      <div class="cart-footer">
+        <div class="total-line"><span>Total</span><span id="totalAmt">₹0</span></div>
+
+        <form id="checkoutForm" method="POST" action="{% url 'customer_checkout' restaurant.code table_number %}">
+          {% csrf_token %}
+          <input type="hidden" name="cartdata" id="cartdata" />
+          <button class="checkout-btn" id="checkoutBtn" onclick="handleCheckout()">Checkout</button>
+
+        </form>
+
+        <div class="upsell">
+          <h3>You might also like</h3>
+          <div class="upsell-list" id="upsellList">
+            {% for cat, items in cat_items %}
+              {% for wrapped in items|slice:":3" %}
+                {% with item=wrapped.item %}
+                  <div class="upsell-item" role="button" aria-label="Add {{ item.name }}">
+                    {% if item.image %}
+                      <img src="{{ item.image.url }}" alt="{{ item.name }}" loading="lazy">
+                    {% else %}
+                      <img src="https://via.placeholder.com/300x300.png?text={{ item.name|urlencode }}" alt="{{ item.name }}">
+                    {% endif %}
+                    <div style="font-size:13px;">{{ item.name }}</div>
+                    <button onclick="addToCart('{{ item.id }}','{{ item.name }}','{{ item.price }}')">Add ₹{{ item.price }}</button>
+                  </div>
+                {% endwith %}
+              {% endfor %}
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+    </aside>
+  </div>
+
+  <script>
+    /* ---------- SPLASH: hide after exact 2000ms without waiting for heavy assets ---------- */
+    (function splashController(){
+      // On DOM ready, ensure splash is visible then schedule hide
+      const splash = document.getElementById('splash-screen');
+      if (!splash) return;
+      // Ensure splash visible right away (in case browser prerender/caching quirks)
+      splash.style.visibility = 'visible';
+      splash.style.opacity = '1';
+
+      // Always hide after 2 seconds (2000ms) regardless of other resources
+      // Fade-out duration is 500ms (CSS transition). We remove aria after fade.
+      setTimeout(() => {
+        splash.classList.add('fade-out');
+        // remove from accessibility tree after fade
+        setTimeout(() => {
+          splash.setAttribute('aria-hidden', 'true');
+          // Optionally remove from DOM to free memory
+          try { splash.remove(); } catch (e) { /* no big deal if not removable */ }
+        }, 520);
+      }, 2000);
+    })();
+
+    /* ---------- App state & utilities (kept same logic, optimized) ---------- */
+    const cart = {};           // { id: { name, price, qty } }
+    let currentCategory = 'All';
+
+    function toggleCart(){
+      const drawer = document.getElementById('cartDrawer');
+      drawer.classList.toggle('open');
+      // do not lock body scroll; cart has its own scroll container
+    }
+
+    function parsePrice(price){
+      if (price === null || price === undefined) return 0;
+      if (typeof price === 'number') return price;
+      // strip currency or any non-digit except dot
+      const p = (''+price).replace(/[^\d.]/g,'');
+      const val = parseFloat(p);
+      return isFinite(val) ? val : 0;
+    }
+
+    function addToCart(id, name, price){
+      const val = parsePrice(price);
+      if (!cart[id]) cart[id] = { name: name, price: val, qty: 0 };
+      cart[id].qty += 1;
+      updateCart();
+    }
+
+    function changeQty(id, delta){
+      if (!cart[id]) return;
+      cart[id].qty += delta;
+      if (cart[id].qty <= 0) delete cart[id];
+      updateCart();
+    }
+
+    function updateCart(){
+      const list = document.getElementById('cartList');
+      list.innerHTML = '';
+      let total = 0;
+      let count = 0;
+      const ids = Object.keys(cart);
+      if (ids.length === 0){
+        list.innerHTML = '<div style="text-align:center;color:var(--muted);padding:20px 0;">Cart is empty</div>';
+        document.getElementById('totalAmt').textContent = '₹0';
+        document.getElementById('itemCount').textContent = '0';
+        document.getElementById('cartdata').value = '';
+        // hide all indicators
+        document.querySelectorAll('.cart-indicator').forEach(ci => ci.classList.remove('visible'));
+        return;
+      }
+
+      const frag = document.createDocumentFragment();
+      ids.forEach(id => {
+        const it = cart[id];
+        total += it.price * it.qty;
+        count += it.qty;
+
+        const wrapper = document.createElement('div');
+        wrapper.className = 'cart-item';
+        wrapper.innerHTML = `
+          <span>${escapeHtml(it.name)} × ${it.qty}</span>
+          <span>₹${(it.price * it.qty).toFixed(2)}</span>
+          <div style="display:inline-flex;gap:6px;margin-left:12px;">
+            <button onclick="changeQty('${id}',-1)">−</button>
+            <button onclick="changeQty('${id}',1)">+</button>
+          </div>
+        `;
+        frag.appendChild(wrapper);
+
+        // update card indicator if exists
+        const icon = document.getElementById('cart-icon-' + id);
+        if (icon){
+          icon.textContent = it.qty;
+          icon.classList.add('visible');
+        }
+      });
+
+      list.appendChild(frag);
+
+      // hide indicators for not-in-cart items
+      document.querySelectorAll('.cart-indicator').forEach(icon=>{
+        const id = icon.id.replace('cart-icon-','');
+        if (!cart[id]) icon.classList.remove('visible');
+      });
+
+      document.getElementById('totalAmt').textContent = '₹' + total.toFixed(2);
+      document.getElementById('itemCount').textContent = count;
+      document.getElementById('cartdata').value = JSON.stringify(cart).replace(/'/g,"&apos;");
+    }
+
+    // prevent XSS when injecting names into DOM from potentially untrusted sources
+    function escapeHtml(str){
+      return String(str).replace(/[&<>"'`=\/]/g, function(s){ return ({
+        '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;','`':'&#96;','=':'&#61;','/':'&#47;'
+      })[s]; });
+    }
+
+    // ensure checkout includes cartdata
+    const checkoutForm = document.getElementById('checkoutForm');
+    if (checkoutForm) {
+      checkoutForm.addEventListener('submit', function(e){
+        document.getElementById('cartdata').value = JSON.stringify(cart).replace(/'/g,"&apos;");
+        // allow normal submit to proceed
+      });
+    }
+
+    /* ---------- Prevent checkout if cart is empty ---------- */
+const checkoutBtn = document.getElementById('checkoutBtn'); // your button id
+if (checkoutBtn && checkoutForm) {
+  checkoutForm.addEventListener('submit', function(e){
+    if (Object.keys(cart).length === 0) {
+      e.preventDefault();
+      alert('Your cart is empty. Add something before checkout.');
+      return false;
+    }
+  });
+}
+
+
+    /* ---------- Filters & Search (realtime) ---------- */
+    function filterCategory(catName, btn){
+      // visually toggle chips
+      document.querySelectorAll('.chip').forEach(c=>c.classList.remove('active'));
+      if (btn) btn.classList.add('active');
+      currentCategory = catName;
+      applyFilters();
+    }
+
+    const searchInput = document.getElementById('searchInput');
+    if (searchInput){
+      searchInput.addEventListener('input', applyFilters);
+      // small accessibility: clear aria-live region hint
+      searchInput.addEventListener('keyup', () => {
+        // no-op placeholder; search runs on input already
+      });
+    }
+
+    function applyFilters(){
+      const term = (document.getElementById('searchInput') && document.getElementById('searchInput').value || '').toLowerCase().trim();
+      const cards = document.querySelectorAll('.card');
+      cards.forEach(card => {
+        const catOk = (currentCategory === 'All' || card.dataset.category === currentCategory);
+        const name = (card.dataset.name || '').toLowerCase();
+        const textOk = term === '' ? true : name.includes(term);
+        card.style.display = (catOk && textOk) ? '' : 'none';
+      });
+    }
+
+    // initialize currentCategory based on server-rendered active chip
+    (function init(){
+      const active = document.querySelector('.chip.active');
+      currentCategory = active ? active.textContent.trim() : 'All';
+      applyFilters();
+      // optional: preload some images or lazy-load large images later
+    })();
+
+    /* ---------- Tiny performance tip (no change required) ---------- */
+    // If you have hundreds of cards, consider debouncing search and using requestAnimationFrame for DOM updates.
+  </script>
+</body>
+</html>
